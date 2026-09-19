@@ -69,5 +69,7 @@ It marks an abandoned record as `interrupted`.
 
 Allowed paths are an audit rule after execution.
 They do not create an operating system security boundary.
-The CodeWhale sandbox supplies the primary execution limit.
-Use a disposable Git worktree for stronger isolation.
+Delgado requests a CodeWhale sandbox mode for each job.
+Actual enforcement depends on the CodeWhale build and operating system.
+Treat Windows execution as unsandboxed unless you verify an active boundary.
+Use a container, virtual machine, or disposable worktree for stronger isolation.

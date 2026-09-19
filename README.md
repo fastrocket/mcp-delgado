@@ -192,6 +192,9 @@ The current controls include:
 * Durable output and patch records.
 
 Review the stored patch before you commit any worker change.
+Sandbox enforcement depends on the CodeWhale build and operating system.
+Treat Windows execution as unsandboxed unless you verify an active boundary.
+Use a container, virtual machine, or disposable worktree when stronger isolation matters.
 
 ## Development
 
