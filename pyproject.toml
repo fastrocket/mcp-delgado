@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-delgado"
+version = "0.1.0"
+description = "Keep frontier agents thin by delegating bounded work to fast, economical model workers"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.28,<2",
+  "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[project.urls]
+Homepage = "https://github.com/fastrocket/mcp-delgado"
+Repository = "https://github.com/fastrocket/mcp-delgado.git"
+Issues = "https://github.com/fastrocket/mcp-delgado/issues"
+
+[project.scripts]
+delgado = "mcp_delgado.cli:main"
+mcp-delgado = "mcp_delgado.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_delgado"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
