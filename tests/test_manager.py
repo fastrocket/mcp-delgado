@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from mcp_delgado.manager import JobManager
+from mcp_delgado.schemas import ReviewInput
 
 
 def _git(repo: Path, *args: str) -> None:
@@ -91,6 +92,31 @@ def test_validation_command_uses_argument_list() -> None:
     assert JobManager._validation_args("python -m pytest tests/test_app.py") == [
         "python", "-m", "pytest", "tests/test_app.py",
     ]
+
+
+def test_review_decodes_codewhale_output_as_utf8(repo: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    manager = JobManager(state_dir=tmp_path / "state")
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured.update(kwargs)
+        return subprocess.CompletedProcess(command, 0, stdout="review output\n", stderr="tool trace\n")
+
+    monkeypatch.setattr("mcp_delgado.manager.subprocess.run", fake_run)
+
+    result = manager.review(ReviewInput(request="Review the current code", workspace_path=str(repo)))
+
+    assert result == {
+        "exit_code": 0,
+        "output": "review output",
+        "diagnostics_tail": "tool trace",
+    }
+    assert "--output-format" in captured["command"]
+    assert "text" in captured["command"]
+    assert "--json" not in captured["command"]
+    assert captured["encoding"] == "utf-8"
+    assert captured["errors"] == "replace"
 
 
 @pytest.mark.parametrize("command", ["powershell Remove-Item file", "python -c 'print(1)'", "pytest ; whoami"])

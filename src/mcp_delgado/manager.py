@@ -223,7 +223,7 @@ End with a short summary, changed files, checks, and unresolved issues.
             "-C", str(workspace),
             "exec",
             "--auto",
-            "--json",
+            "--output-format", "text",
             params.request,
         ]
         result = subprocess.run(
@@ -232,10 +232,19 @@ End with a short summary, changed files, checks, and unresolved issues.
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=params.max_minutes * 60,
         )
-        output = "\n".join(part for part in (result.stdout, result.stderr) if part)
-        return {"exit_code": result.returncode, "output": output[-50_000:]}
+        output = result.stdout.strip()
+        diagnostics = result.stderr.strip()
+        if result.returncode != 0 and not output:
+            output = diagnostics
+        return {
+            "exit_code": result.returncode,
+            "output": output[-50_000:],
+            "diagnostics_tail": diagnostics[-20_000:],
+        }
 
     def _run_job(self, job_id: str, before: dict[str, str]) -> None:
         record = self.get(job_id)

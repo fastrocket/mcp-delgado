@@ -132,6 +132,15 @@ Request a focused repair:
 delgado repair JOB_ID "Fix the null case. Do not change the public API."
 ```
 
+Probe the MCP transport directly:
+
+```powershell
+python scripts/mcp_probe.py model_worker_job_status `
+  '{"params":{"job_id":"JOB_ID"}}'
+```
+
+The probe reports process, initialization, tool, and total timing.
+
 ## Configuration
 
 The defaults use the `deepseek` provider and `deepseek-flash` model.
@@ -174,6 +183,8 @@ Both interfaces must continue to call the shared manager.
 
 See [Operating model](docs/OPERATING_MODEL.md) for the full policy.
 See [Architecture](docs/ARCHITECTURE.md) for internal design details.
+See [Runner choices](docs/RUNNERS.md) for CodeWhale and direct API guidance.
+See [Launch content](docs/LAUNCH_CONTENT.md) for social posts and a video script.
 
 ## Safety model
 
