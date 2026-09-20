@@ -78,6 +78,21 @@ def test_status_reports_new_file(repo: Path, tmp_path: Path) -> None:
     assert after["new.txt"].startswith("??:")
 
 
+def test_patch_includes_changed_existing_untracked_file(repo: Path, tmp_path: Path) -> None:
+    manager = JobManager(state_dir=tmp_path / "state")
+    path = repo / "draft.txt"
+    path.write_text("before\n", encoding="utf-8")
+    before = manager._status(repo, ["draft.txt"])
+    path.write_text("after\n", encoding="utf-8")
+    record = JobRecord(job_id="b" * 32, task="edit draft", workspace_path=str(repo),
+                       state=JobState.SUCCEEDED, acceptance_criteria=[], required_commands=[],
+                       allowed_paths=["draft.txt"], changed_paths=["draft.txt"],
+                       provider="deepseek", model="deepseek-flash", max_minutes=1)
+    manager._save(record)
+    manager._write_patch(record, before)
+    assert "+after" in manager.read_diff(record.job_id, 10000)
+
+
 def test_status_detects_changes_to_an_already_dirty_file(repo: Path, tmp_path: Path) -> None:
     manager = JobManager(state_dir=tmp_path / "state")
     target = repo / "README.md"

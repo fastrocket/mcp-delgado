@@ -667,6 +667,19 @@ def test_direct_runner_targets_the_documented_endpoint() -> None:
 # Request contract -----------------------------------------------------------
 
 
+def test_direct_replays_reasoning_before_tool_results_without_logging_it(api_key: str, direct_workspace: Path) -> None:
+    reasoning = {"type": "reasoning", "id": "rs_test", "content": [
+        {"type": "reasoning_text", "text": "private test reasoning"}], "summary": []}
+    call = _call("read_file", {"path": "src/app.py"})
+    transport = _RecordingTransport(_body(reasoning, call), _body(_message("Done.")))
+    result = _run_direct(DirectDeepSeekRunner(transport), _direct_run(direct_workspace))
+    assert result.exit_code == 0
+    replay = transport.payload(1)["input"]
+    assert replay[1:3] == [reasoning, call]
+    assert replay[3]["type"] == "function_call_output"
+    assert "private test reasoning" not in result.output
+
+
 def test_direct_runner_sends_the_documented_responses_payload(api_key: str, direct_workspace: Path) -> None:
     transport = _RecordingTransport(_body(_message("Nothing to do.")))
     runner = DirectDeepSeekRunner(transport, max_output_tokens=1_024)
@@ -683,11 +696,12 @@ def test_direct_runner_sends_the_documented_responses_payload(api_key: str, dire
     assert payload["model"] == "deepseek-chat"
     assert payload["store"] is False
     assert payload["tool_choice"] == "auto"
+    assert payload["reasoning"] == {"effort": "low"}
     assert payload["max_output_tokens"] == 1_024
     assert "Add the note the manager asked for" in json.dumps(payload["input"])
     assert "no shell" in payload["instructions"]
     assert "the manager runs them itself" in payload["instructions"]
-    assert "12 model turns" in payload["instructions"]
+    assert "32 model turns" in payload["instructions"]
     tools = payload["tools"]
     assert [tool["name"] for tool in tools] == [
         "list_files", "read_file", "replace_text", "search_text", "write_file",

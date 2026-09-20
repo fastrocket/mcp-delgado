@@ -108,7 +108,7 @@ DEEPSEEK_RESPONSES_URL = "https://api.deepseek.com/responses"
 # to its ceiling, never past it, and the model cannot change any of them: one
 # direct job stays finite in model turns, tool calls, tool output, response
 # bytes, reported text, and wall-clock time.
-DIRECT_MAX_STEPS = 12
+DIRECT_MAX_STEPS = 32
 DIRECT_HARD_MAX_STEPS = 64
 DIRECT_MAX_TOOL_CALLS = 40
 DIRECT_HARD_MAX_TOOL_CALLS = 200
@@ -212,6 +212,7 @@ class RunnerResult:
     error: str = ""
     timed_out: bool = False
     usage: dict[str, int] = field(default_factory=dict)
+
 
 
 @runtime_checkable
@@ -618,6 +619,7 @@ class _ParsedReply:
     texts: tuple[str, ...] = ()
     calls: tuple[_ToolCall, ...] = ()
     usage: dict[str, int] = field(default_factory=dict)
+    replay_items: tuple[dict[str, Any], ...] = ()
 
 
 def _error_text(value: object) -> str:
@@ -708,7 +710,9 @@ def _parse_reply(reply: ResponsesReply) -> _ParsedReply:
     if not texts and isinstance(document.get("output_text"), str) and document["output_text"].strip():
         texts.append(document["output_text"])
 
-    return _ParsedReply(texts=tuple(texts), calls=tuple(calls), usage=_reply_usage(document))
+    return _ParsedReply(texts=tuple(texts), calls=tuple(calls), usage=_reply_usage(document),
+                        replay_items=tuple(item for item in output if item.get("type") in
+                                           {"reasoning", "message", "function_call"}))
 
 
 def _reply_usage(document: dict[str, Any]) -> dict[str, int]:
@@ -1045,6 +1049,9 @@ class DirectDeepSeekRunner:
                     usage=_usage_counters(token_usage, steps, tool_calls),
                 )
 
+            # DeepSeek requires the reasoning item on tool continuations.
+            # Keep output order and protocol fields. Do not write reasoning to logs.
+            items.extend(parsed.replay_items)
             for call in parsed.calls:
                 if tool_calls >= self.max_tool_calls:
                     return self._stopped(
@@ -1061,14 +1068,6 @@ class DirectDeepSeekRunner:
                         trace, texts, token_usage, steps, tool_calls,
                     )
                 trace.append(f"{call.name}: {result.get('error', 'ok')}")
-                items.append(
-                    {
-                        "type": "function_call",
-                        "call_id": call.call_id,
-                        "name": call.name,
-                        "arguments": call.arguments,
-                    }
-                )
                 items.append({"type": "function_call_output", "call_id": call.call_id, "output": serialized})
 
         return self._stopped(
@@ -1102,6 +1101,7 @@ class DirectDeepSeekRunner:
             "input": items,
             "tools": list(tool_table),
             "tool_choice": "auto",
+            "reasoning": {"effort": "low"},
             "parallel_tool_calls": True,
             "max_output_tokens": max_output_tokens,
             "store": False,

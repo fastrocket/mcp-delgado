@@ -145,6 +145,13 @@ start, removed from validation subprocess environments, and never stored.
 The MCP host reads runner selection once at startup. Restart the host after
 changing it. Each CLI invocation reads the current environment independently.
 
+The direct runner uses low reasoning effort and a 32-turn limit. It preserves
+reasoning protocol items between tool calls, without adding them to job logs.
+Repair jobs include the original task and the new findings. Stored patches include
+changed untracked files as full-file additions, including files present before the job.
+These additions show the final file, not a job-relative delta. Inspect existing
+user changes separately when reviewing a dirty workspace.
+
 A direct job runs inside its manager process. Cancel it through the same MCP host
 or owning CLI process. Cancellation from a second process is refused rather than
 signalling the manager. CodeWhale child-process jobs support cross-process

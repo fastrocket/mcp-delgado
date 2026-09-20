@@ -63,6 +63,16 @@ def test_run_parses_repeatable_scope_and_checks() -> None:
     assert args.required_commands == ["python -m pytest"]
 
 
+def test_repair_keeps_original_task(monkeypatch) -> None:
+    manager = _StubManager([_job_record()])
+    captured = []
+    manager.submit = lambda params, parent_job_id=None: (captured.append(params) or _job_record())
+    args = _build_parser().parse_args(["repair", JOB_ID, "Fix the preview"])
+    assert cli._repair_command(args, manager) == 0
+    assert _job_record().task in captured[0].task
+    assert "Fix the preview" in captured[0].task
+
+
 def test_review_defaults_to_current_workspace() -> None:
     args = _build_parser().parse_args(["review", "Review the current changes"])
 

@@ -1163,7 +1163,7 @@ End with a short summary, changed files, checks, and unresolved issues.
                 parts.append(self._strip_tool_state_diff(result.stdout))
         new_untracked = [
             path for path in record.changed_paths
-            if path not in before
+            if (path not in before or before[path].startswith("??"))
             and not self._is_tool_state_path(path)
             and (workspace / path).is_file()
         ]

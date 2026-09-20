@@ -114,7 +114,7 @@ async def model_worker_repair_task(params: RepairTaskInput) -> str:
     try:
         previous = manager.get(params.job_id)
         task = DelegateTaskInput(
-            task=f"Repair the earlier delegated task.\n\nManager findings:\n{params.feedback}",
+            task=f"Original task:\n{previous.task}\n\nManager findings:\n{params.feedback}",
             acceptance_criteria=previous.acceptance_criteria,
             workspace_path=previous.workspace_path,
             allowed_paths=previous.allowed_paths,
