@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import sys
 
 from mcp.server.fastmcp import FastMCP
 
-from .manager import JobManager
+from .manager import JobManager, ReviewTimeoutError, RunnerSelectionError
 from .schemas import DelegateTaskInput, JobIdInput, ReadDiffInput, RepairTaskInput, ReviewInput
 
 INSTRUCTIONS = (
@@ -16,7 +17,24 @@ INSTRUCTIONS = (
 RESPONSE_BYTE_CAP = 60_000
 
 mcp = FastMCP("mcp_delgado", instructions=INSTRUCTIONS)
-manager = JobManager()
+
+
+def _build_manager() -> JobManager:
+    """Build the server's manager, or explain a bad runner selector and stop.
+
+    An MCP host is long-lived, so this process reads ``MODEL_WORKER_RUNNER``
+    once, when it starts: restart the host to change backends. The refusal is
+    explicit because the alternative, quietly running every job on the default
+    backend, would hide a typo in a selector the operator meant to use.
+    """
+    try:
+        return JobManager()
+    except RunnerSelectionError as exc:
+        print(f"mcp-delgado: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None
+
+
+manager = _build_manager()
 
 
 def _json(payload: object) -> str:
@@ -114,7 +132,15 @@ async def model_worker_repair_task(params: RepairTaskInput) -> str:
 async def model_worker_review(params: ReviewInput) -> str:
     """Ask the configured model for a read-only review of a workspace."""
     try:
-        return _json(manager.review(params))
+        return _json(await manager.review_async(params))
+    except ReviewTimeoutError as exc:
+        return _json({
+            "error": "ReviewTimeoutError",
+            "detail": str(exc),
+            "timed_out": True,
+            "output": exc.output,
+            "diagnostics_tail": exc.diagnostics_tail,
+        })
     except Exception as exc:
         return _json({"error": type(exc).__name__, "detail": str(exc)})
 
